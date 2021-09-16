@@ -1,11 +1,11 @@
-import boto3
-import time, os
 import atexit
-from flask import Flask, Response
-from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
-from datetime import datetime, timedelta
+import boto3
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from datetime import datetime, timedelta
+from flask import Flask, Response
+from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 
 QUERY_PERIOD = os.getenv("QUERY_PERIOD", "1800")

@@ -21,13 +21,6 @@ jobs:
         with:
           args: --version
 
-      # - name: Release to GitHub
-      #   uses: opspresso/action-builder@master
-      #   with:
-      #     args: --release
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build & Push to Docker Hub
         uses: opspresso/action-docker@master
         with:
@@ -35,7 +28,4 @@ jobs:
         env:
           USERNAME: ${{ secrets.DOCKER_USERNAME }}
           PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          # TAG_NAME: ${{ github.ref }}
-          # PLATFORM: "linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6"
-          BUILDX: "true"
-          # LATEST: "true"
+          LATEST: "true"
