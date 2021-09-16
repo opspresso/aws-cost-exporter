@@ -10,6 +10,7 @@ from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 QUERY_PERIOD = os.getenv("QUERY_PERIOD", "1800")
 
+METRIC_MONTHLY_COSTS = os.getenv("METRIC_MONTHLY_COSTS", None)
 METRIC_TODAY_DAILY_COSTS = os.getenv("METRIC_TODAY_DAILY_COSTS", None)
 METRIC_YESTERDAY_DAILY_COSTS = os.getenv("METRIC_YESTERDAY_DAILY_COSTS", None)
 METRIC_TODAY_DAILY_USAGE = os.getenv("METRIC_TODAY_DAILY_USAGE", None)
@@ -22,8 +23,10 @@ client = boto3.client("ce")
 
 scheduler = BackgroundScheduler()
 
+if METRIC_MONTHLY_COSTS is not None:
+    g_monthly = Gauge("aws_monyhly_costs", "Today monthly costs from AWS")
 if METRIC_TODAY_DAILY_COSTS is not None:
-    g_cost = Gauge("aws_today_daily_costs", "Today daily costs from AWS")
+    g_today = Gauge("aws_today_daily_costs", "Today daily costs from AWS")
 if METRIC_YESTERDAY_DAILY_COSTS is not None:
     g_yesterday = Gauge("aws_yesterday_daily_costs", "Yesterday daily costs from AWS")
 if METRIC_TODAY_DAILY_USAGE is not None:
@@ -38,6 +41,20 @@ def aws_query():
     now = datetime.now()
     yesterday = datetime.today() - timedelta(days=1)
     two_days_ago = datetime.today() - timedelta(days=2)
+    first_day = datetime.today().replace(day=1)
+
+    if METRIC_MONTHLY_COSTS is not None:
+        r = client.get_cost_and_usage(
+            TimePeriod={
+                "Start": first_day.strftime("%Y-%m-%d"),
+                "End":  now.strftime("%Y-%m-%d")
+            },
+            Granularity="MONTHLY",
+            Metrics=["BlendedCost"]
+        )
+        cost = r["ResultsByTime"][0]["Total"]["BlendedCost"]["Amount"]
+        print("aws_monyhly_costs: %s" %(cost))
+        g_monthly.set(float(cost))
 
     if METRIC_TODAY_DAILY_COSTS is not None:
         r = client.get_cost_and_usage(
@@ -50,7 +67,7 @@ def aws_query():
         )
         cost = r["ResultsByTime"][0]["Total"]["BlendedCost"]["Amount"]
         print("aws_today_daily_costs: %s" %(cost))
-        g_cost.set(float(cost))
+        g_today.set(float(cost))
 
     if METRIC_YESTERDAY_DAILY_COSTS is not None:
         r = client.get_cost_and_usage(
@@ -61,9 +78,9 @@ def aws_query():
             Granularity="DAILY",
             Metrics=["BlendedCost"]
         )
-        cost_yesterday = r["ResultsByTime"][0]["Total"]["BlendedCost"]["Amount"]
-        print("aws_yesterday_daily_costs: %s" %(cost_yesterday))
-        g_yesterday.set(float(cost_yesterday))
+        cost = r["ResultsByTime"][0]["Total"]["BlendedCost"]["Amount"]
+        print("aws_yesterday_daily_costs: %s" %(cost))
+        g_yesterday.set(float(cost))
 
     if METRIC_TODAY_DAILY_USAGE is not None:
         r = client.get_cost_and_usage(
@@ -87,9 +104,9 @@ def aws_query():
             Granularity="DAILY",
             Metrics=["NormalizedUsageAmount"]
         )
-        usage_norm = r["ResultsByTime"][0]["Total"]["NormalizedUsageAmount"]["Amount"]
-        print("aws_today_daily_usage_norm: %s" %(usage_norm))
-        g_usage_norm.set(float(usage_norm))
+        usage = r["ResultsByTime"][0]["Total"]["NormalizedUsageAmount"]["Amount"]
+        print("aws_today_daily_usage_norm: %s" %(usage))
+        g_usage_norm.set(float(usage))
 
     print("Finished calculating costs.")
 
